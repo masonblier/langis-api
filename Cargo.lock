@@ -1061,6 +1061,7 @@ dependencies = [
  "futures 0.3.4",
  "lazy_static",
  "r2d2",
+ "rand 0.7.3",
  "serde",
  "serde_json",
  "uuid",
