@@ -14,8 +14,10 @@ mod security;
 mod auth_handler;
 mod register_handler;
 
+/// Common type for database pool
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+/// Main application entry
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info,diesel=debug");
@@ -71,8 +73,6 @@ async fn main() -> std::io::Result<()> {
                     .route(web::delete().to(auth_handler::logout))
                     .route(web::get().to(auth_handler::get_me)),
             )
-            // .service(get_user)
-            // .service(add_user)
     })
     .bind(&bind)?
     .run()

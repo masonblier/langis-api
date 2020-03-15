@@ -49,7 +49,7 @@ impl FromRequest for LoggedUser {
     }
 }
 
-/// DELETE /auth route
+/// DELETE /auth
 pub async fn logout(
     id: Identity,
     pool: web::Data<DbPool>,
@@ -69,7 +69,7 @@ pub async fn logout(
     HttpResponse::Ok().finish()
 }
 
-/// POST /auth route
+/// POST /auth
 pub async fn login(
     auth_data: web::Json<AuthData>,
     id: Identity,
@@ -104,7 +104,7 @@ pub async fn login(
     }
 }
 
-/// GET /auth route
+/// GET /auth
 pub async fn get_me(logged_user: LoggedUser) -> HttpResponse {
     HttpResponse::Ok().json(logged_user)
 }

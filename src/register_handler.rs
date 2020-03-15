@@ -14,13 +14,14 @@ pub struct UserData {
     pub password: String,
 }
 
+/// POST /register 
 pub async fn register_user(
     user_data: web::Json<UserData>,
     pool: web::Data<DbPool>,
 ) -> Result<HttpResponse, ServiceError> {
     let user_data = user_data.into_inner();
     let res = web::block(move || {
-        query(
+        query_create_user(
             user_data.username,
             user_data.password,
             pool,
@@ -37,7 +38,9 @@ pub async fn register_user(
     }
 }
 
-fn query(
+
+/// Inserts new user row into the database
+fn query_create_user(
     username: String,
     password: String,
     pool: web::Data<DbPool>,

@@ -18,6 +18,7 @@ pub enum ServiceError {
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
 impl ResponseError for ServiceError {
+    /// Converts ServiceError into actix-web HttpResponse objects
     fn error_response(&self) -> HttpResponse {
         match self {
             ServiceError::InternalServerError => HttpResponse::InternalServerError()
@@ -33,6 +34,7 @@ impl ResponseError for ServiceError {
 }
 
 impl From<DBError> for ServiceError {
+    /// Constructor method to convert DBError from Diesel into application ServiceError type
     fn from(error: DBError) -> ServiceError {
         // Right now we just care about UniqueViolation from diesel
         // But this would be helpful to easily map errors as our app grows
