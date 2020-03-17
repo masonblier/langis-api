@@ -7,6 +7,14 @@ table! {
 }
 
 table! {
+    sources (id) {
+        id -> Int4,
+        name -> Varchar,
+        last_updated_at -> Timestamp,
+    }
+}
+
+table! {
     users (id) {
         id -> Int4,
         username -> Varchar,
@@ -15,7 +23,22 @@ table! {
     }
 }
 
+table! {
+    word_translations (id) {
+        id -> Int4,
+        orth -> Varchar,
+        orth_lang -> Varchar,
+        quote -> Varchar,
+        quote_lang -> Varchar,
+        pos -> Nullable<Varchar>,
+        sense -> Int4,
+        source_id -> Int4,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     sessions,
+    sources,
     users,
+    word_translations,
 );

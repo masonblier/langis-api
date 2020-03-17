@@ -24,6 +24,14 @@ GRANT ALL ON DATABASE langis_development TO langis_development;
 diesel migration run
 ```
 
+##### Importing Freedict TEI files
+
+- TEI files from Freedict can be imported with the import-freedict-tei file tool, where the format of the filename is `eng-[lang].tei`:
+
+```
+cargo run --bin import-freedict-tei ../data/eng-rus.tei
+```
+
 ##### Run
 
 Runs the server. A `SECRET_KEY` environment variable of length 32 is required for password hashing, please use a unique secret key!

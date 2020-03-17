@@ -2,6 +2,7 @@
 name = "langis"
 version = "0.0.1"
 edition = "2018"
+default-run = "main"
 
 [dependencies]
 actix-rt = "1.0.0"
@@ -22,7 +23,12 @@ uuid = { version = "^0.8.1", features = ["serde", "v4"] }
 actix-identity = "0.2.1"
 derive_more = "0.99.3"
 quick-xml = "0.17.2"
+regex = "1.3.5"
 
 [[bin]]
-name = "import-freedict"
-path = "tools/import_freedict.rs"
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
+name = "import-freedict-tei"
+path = "src/tools/import_freedict_tei.rs"
