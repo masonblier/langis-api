@@ -11,8 +11,10 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use regex::Regex;
 
+use langis::database;
 use langis::models::{NewSource, NewWordTranslation, Source};
 use langis::schema;
+use langis::tool_helpers;
 
 /// enum for tracking the state of which buffer to read body text into
 #[derive(Copy, Clone)]
@@ -23,59 +25,6 @@ enum WhichTextBuf {
     None
 }
 
-/// connection to postgres database
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
-}
-
-/// finds or creates a sources record citing the dictionary import file
-pub fn find_or_create_source<'a>(conn: &PgConnection, source_name: String) -> Source {
-    use schema::sources;
-    use schema::sources::dsl::*;
-
-    // check for existing result
-    let results = sources.filter(name.eq(source_name.clone()))
-        .limit(1)
-        .load::<Source>(conn)
-        .expect("Error checking sources table");
-    
-    if results.len() < 1 {
-
-        let new_source = NewSource::from_name(source_name);
-
-        diesel::insert_into(sources::table)
-            .values(&new_source)
-            .get_result(conn)
-            .expect("Error saving sources record")
-
-    } else {
-        results[0].clone()
-    }
-}
-
-/// update sources record with last_updated_at date
-pub fn update_source<'a>(conn: &PgConnection, source_id: i32) {
-    use schema::sources::dsl::*;
-
-    diesel::update(sources.find(source_id))
-        .set(last_updated_at.eq(chrono::Local::now().naive_local()))
-        .execute(conn)
-        .expect(&format!("Unable to update source {}", source_id));
-}
-
-/// writes a word_translation entry to the database table
-pub fn insert_word_translations<'a>(conn: &PgConnection, new_entry: NewWordTranslation) {
-    use schema::word_translations;
-
-    diesel::insert_into(word_translations::table)
-        .values(&new_entry)
-        .execute(conn)
-        .expect("Error saving word_translations record");
-}
 
 /// main
 fn main() -> std::io::Result<()> {
@@ -94,7 +43,7 @@ fn main() -> std::io::Result<()> {
     let lang_id = lang_re_caps.get(1).unwrap().as_str();
 
     // connect to database
-    let conn = establish_connection();
+    let conn = database::establish_connection();
     
     // initialize file reader
     let file = File::open(filename)?;
@@ -122,7 +71,7 @@ fn main() -> std::io::Result<()> {
 
     // find or create sources record
     let source_name = format!("freedict-eng-{}.tei", lang_id);
-    let source = find_or_create_source(&conn, source_name);
+    let source = tool_helpers::find_or_create_source(&conn, source_name);
 
     // begin
     println!("Beginning import of tei with orth language: \"eng\", quote language: {:?}", lang_id);
@@ -201,7 +150,7 @@ fn main() -> std::io::Result<()> {
                             sense: sense_idx,
                             source_id: source.id
                         };
-                        insert_word_translations(&conn, new_entry);
+                        tool_helpers::insert_word_translations(&conn, new_entry);
                         
                         quote_txt.clear();
                     },
@@ -231,7 +180,7 @@ fn main() -> std::io::Result<()> {
     }
 
     // update sources table with last_updated_at
-    update_source(&conn, source.id);
+    tool_helpers::update_source(&conn, source.id);
 
     // done
     println!("Finished, processed {:?} entries", entry_count);

@@ -32,6 +32,21 @@ diesel migration run
 cargo run --bin import-freedict-tei ../data/eng-rus.tei
 ```
 
+##### Importing edict2 and cedict files
+
+- The `import-edict` script can import a decompressed edict2 or cedict file.
+- The edict2 file requires conversion from JIS to UTF-8 encoding:
+
+```
+iconv -f EUC-JP -t UTF-8 edict2 -o edict2.utf8	
+```
+
+- The import script can be run on the UTF-8 file:
+
+```
+cargo run --bin import-edict ../data/edict2.utf8
+```
+
 ##### Run
 
 Runs the server. A `SECRET_KEY` environment variable of length 32 is required for password hashing, please use a unique secret key!

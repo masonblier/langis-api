@@ -6,6 +6,7 @@ use actix_web::{middleware, web, App, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 
+mod database;
 mod errors;
 mod models;
 mod schema;
@@ -13,9 +14,6 @@ mod security;
 
 mod auth_handler;
 mod register_handler;
-
-/// Common type for database pool
-type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 /// Main application entry
 #[actix_rt::main]

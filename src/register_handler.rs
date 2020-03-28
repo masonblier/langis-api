@@ -2,10 +2,10 @@ use actix_web::{error::BlockingError, web, HttpResponse};
 use diesel::prelude::*;
 use serde::Deserialize;
 
+use crate::database::DbPool;
 use crate::errors::ServiceError;
 use crate::models::{NewUser, SlimUser, User};
 use crate::security::hash_password;
-use crate::DbPool;
 
 // UserData is used to extract data from a post request by the client
 #[derive(Debug, Deserialize)]

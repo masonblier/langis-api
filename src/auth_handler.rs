@@ -10,10 +10,10 @@ use diesel::PgConnection;
 use futures::future::Future;
 use serde::Deserialize;
 
+use crate::database::DbPool;
 use crate::errors::ServiceError;
 use crate::models::{Session, SlimUser, User};
 use crate::security::verify_password;
-use crate::DbPool;
 
 /// struct for storing login request data
 #[derive(Debug, Deserialize)]
