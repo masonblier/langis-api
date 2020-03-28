@@ -25,7 +25,6 @@ enum WhichTextBuf {
     None
 }
 
-
 /// main
 fn main() -> std::io::Result<()> {
     // get input file path from command line argument

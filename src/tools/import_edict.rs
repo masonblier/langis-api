@@ -1,5 +1,7 @@
 extern crate diesel;
+extern crate regex;
 
+use regex::Regex;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, ErrorKind};
@@ -9,6 +11,13 @@ use langis::database;
 use langis::models::{NewSource, NewWordTranslation, Source};
 use langis::schema;
 use langis::tool_helpers;
+
+lazy_static::lazy_static! {
+    // parse language identifier from filename
+    pub static ref ORTH_RGX: Regex = Regex::new(r"([^\[]+)(?:\[(.+)\])?").unwrap();
+    // matches EntL ids from edict2 file
+    pub static ref ENTL_RGX: Regex = Regex::new(r"^EntL(?:\d+)X?$").unwrap();
+}
 
 /// main
 fn main() -> std::io::Result<()> {
@@ -54,9 +63,51 @@ fn main() -> std::io::Result<()> {
                 // skip lines that begin with #
             } else if ip.starts_with("　？？？") {
                 // skip the edict2 header line
-            } else {
-                println!("{}", &ip);
-                // TODO
+            } else {                
+                // split the line by '/' to separate orth and quote parts
+                let line_parts: Vec<&str> = ip.split("/").collect();
+
+                // match orth part with optional reading group
+                let orth_caps = ORTH_RGX.captures(line_parts.first().unwrap()).unwrap();
+
+                let orth = orth_caps.get(1).map_or("", |m| m.as_str()).trim();
+                let readings = orth_caps.get(2).map_or("", |m| m.as_str()).trim();
+
+                // edict2 readings are split by ;, cedict readings are split by a space
+                let orth_splitter = if lang_id == "zho" { " " } else { ";" };
+                let orth_parts: Vec<&str> = orth.split(orth_splitter).collect();
+
+                // edict2 can have multiple readings split by ;, cedict does not have multiple readings
+                let reading_parts: Vec<&str> = if lang_id == "zho" { 
+                    vec![readings] 
+                } else {
+                    readings.split(";").collect()
+                };
+
+                // split quote parts (definitions) by /
+                let quote_parts_raw = &line_parts[1..];
+                // filter out EntL ids and empty strings
+                let quote_parts: Vec<&str> = quote_parts_raw.iter().filter({|qp|
+                    !(qp.is_empty() || ENTL_RGX.is_match(qp))
+                }).map(|qp| qp.clone()).collect();
+                
+                // TODO extract pos and See tags from edict2 quote strings
+
+                // insert rows for each variation
+                for op in orth_parts {
+                    for (sense_idx, qp) in quote_parts.clone().into_iter().enumerate() {
+                        let new_entry = NewWordTranslation {
+                            orth: op.to_string(),
+                            orth_lang: lang_id.to_string(),
+                            quote: qp.to_string(),
+                            quote_lang: "eng".to_string(),
+                            pos: None,
+                            sense: sense_idx as i32,
+                            source_id: source.id
+                        };
+                        tool_helpers::insert_word_translations(&conn, new_entry);
+                    }
+                }
 
                 // incr
                 entry_count += 1;
@@ -70,7 +121,7 @@ fn main() -> std::io::Result<()> {
             return Err(er);
         }
 
-        if entry_count > 10 {
+        if entry_count > 500 {
             break;
         }
     }
