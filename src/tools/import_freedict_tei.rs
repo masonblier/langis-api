@@ -4,16 +4,12 @@ extern crate regex;
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
-use diesel::prelude::*;
-use diesel::pg::PgConnection;
-use dotenv::dotenv;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use regex::Regex;
 
 use langis::database;
-use langis::models::{NewSource, NewWordTranslation, Source};
-use langis::schema;
+use langis::models::{NewWordTranslation};
 use langis::tool_helpers;
 
 /// enum for tracking the state of which buffer to read body text into
@@ -30,16 +26,17 @@ fn main() -> std::io::Result<()> {
     // get input file path from command line argument
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("Usage: `import-freedict-tei path/to/eng-[lang].tei`");
+        println!("Usage: `import-freedict-tei path/to/[lang]-[lang].tei`");
         println!("  tei file must be specified");
         return Ok(());
     }
     let filename = &args[1];
 
     // parse language identifier from filename
-    let lang_re = Regex::new(r"eng\-(\w+)\.tei").unwrap();
+    let lang_re = Regex::new(r"(\w+)\-(\w+)\.tei").unwrap();
     let lang_re_caps = lang_re.captures(filename).unwrap();
-    let lang_id = lang_re_caps.get(1).unwrap().as_str();
+    let orth_lang = lang_re_caps.get(1).unwrap().as_str();
+    let quote_lang = lang_re_caps.get(2).unwrap().as_str();
 
     // connect to database
     let conn = database::establish_connection();
@@ -69,11 +66,11 @@ fn main() -> std::io::Result<()> {
     let mut txt_which = WhichTextBuf::None;
 
     // find or create sources record
-    let source_name = format!("freedict-eng-{}.tei", lang_id);
+    let source_name = format!("freedict-{}-{}.tei", orth_lang, quote_lang);
     let source = tool_helpers::find_or_create_source(&conn, source_name);
 
     // begin
-    println!("Beginning import of tei with orth language: \"eng\", quote language: {:?}", lang_id);
+    println!("Beginning import of tei with orth language: {:?}, quote language: {:?}", orth_lang, quote_lang);
 
     loop {
         match reader.read_event(&mut buf) {
@@ -142,9 +139,9 @@ fn main() -> std::io::Result<()> {
                         // for each quote tag ended, store an entry in the dict_entries table
                         let new_entry = NewWordTranslation {
                             orth: orth_txt.join("").trim().to_string(),
-                            orth_lang: "eng".to_string(),
+                            orth_lang: orth_lang.to_string(),
                             quote: quote_txt.join("").trim().to_string(),
-                            quote_lang: lang_id.to_string(),
+                            quote_lang: quote_lang.to_string(),
                             pos: pos_value,
                             sense: sense_idx,
                             source_id: source.id
