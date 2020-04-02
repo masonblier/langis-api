@@ -1,4 +1,12 @@
 table! {
+    notes_and_tags (id) {
+        id -> Int4,
+        word_translation_id -> Int4,
+        note -> Varchar,
+    }
+}
+
+table! {
     sessions (token) {
         token -> Varchar,
         user_id -> Int4,
@@ -37,6 +45,7 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(
+    notes_and_tags,
     sessions,
     sources,
     users,

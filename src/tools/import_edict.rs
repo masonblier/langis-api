@@ -4,12 +4,11 @@ extern crate regex;
 use regex::Regex;
 use std::env;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, ErrorKind};
+use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::Path;
 
 use langis::database;
-use langis::models::{NewSource, NewWordTranslation, Source};
-use langis::schema;
+use langis::models::{NewWordTranslation};
 use langis::tool_helpers;
 
 lazy_static::lazy_static! {
@@ -17,6 +16,10 @@ lazy_static::lazy_static! {
     pub static ref ORTH_RGX: Regex = Regex::new(r"([^\[]+)(?:\[(.+)\])?").unwrap();
     // matches EntL ids from edict2 file
     pub static ref ENTL_RGX: Regex = Regex::new(r"^EntL(?:\d+)X?$").unwrap();
+    // matches pos tags and See tags
+    pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
+    // matches {comp} tags
+    pub static ref COMP_RGX: Regex = Regex::new(r"([^(]*)(\{comp\})(.*)").unwrap();
 }
 
 /// main
@@ -91,21 +94,60 @@ fn main() -> std::io::Result<()> {
                     !(qp.is_empty() || ENTL_RGX.is_match(qp))
                 }).map(|qp| qp.clone()).collect();
                 
-                // TODO extract pos and See tags from edict2 quote strings
 
                 // insert rows for each variation
                 for op in orth_parts {
                     for (sense_idx, qp) in quote_parts.clone().into_iter().enumerate() {
+                        // extract pos and See tags from edict2 quote strings
+                        let mut rqp = qp.clone().to_string();
+                        let mut collected_tags = Vec::<String>::new();
+                        loop {
+                            // parse out pos tags and See tags
+                            // TODO restrict parsing to only known tags, ignore other stuff between parens
+                            let rqpc = rqp.clone();
+                            let tag_match_opt = TAGS_RGX.captures(rqpc.as_str());
+                            if let Some(tag_caps) = tag_match_opt {
+                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
+                                    " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
+                                if let Some(matched_tag) = tag_caps.get(2) {
+                                    collected_tags.push(matched_tag.as_str().to_string());
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+
+                        loop {
+                            // parse out {comp} tags
+                            let rqpc = rqp.clone();
+                            let comp_match_opt = COMP_RGX.captures(rqpc.as_str());
+                            if let Some(comp_caps) = comp_match_opt {
+                                rqp = (comp_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
+                                    " " + comp_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
+                                if let Some(matched_tag) = comp_caps.get(2) {
+                                    collected_tags.push(matched_tag.as_str().to_string());
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+
+                        // insert word_translations record
                         let new_entry = NewWordTranslation {
                             orth: op.to_string(),
                             orth_lang: lang_id.to_string(),
-                            quote: qp.to_string(),
+                            quote: rqp.to_string(),
                             quote_lang: "eng".to_string(),
                             pos: None,
                             sense: sense_idx as i32,
                             source_id: source.id
                         };
-                        tool_helpers::insert_word_translations(&conn, new_entry);
+                        let word_translation_id = tool_helpers::insert_word_translations(&conn, new_entry);
+
+                        // insert collected tags
+                        for note in collected_tags {
+                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, note);
+                        }
                     }
                 }
 
@@ -119,10 +161,6 @@ fn main() -> std::io::Result<()> {
                 println!("Unknown Error\n{:?}", er);
             }
             return Err(er);
-        }
-
-        if entry_count > 500 {
-            break;
         }
     }
 

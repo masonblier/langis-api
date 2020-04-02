@@ -95,6 +95,23 @@ impl NewSource {
 }
 
 
+/// NotesAndTags records
+#[derive(Debug, Serialize, Deserialize, Queryable)]
+pub struct NotesAndTags {
+    pub id: i32,
+    pub word_translation_id: i32,
+    pub note: String,
+}
+
+/// NewNotesAndTags struct for inserting a new notes_and_tags record
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[table_name = "notes_and_tags"]
+pub struct NewNotesAndTags {
+    pub word_translation_id: i32,
+    pub note: String,
+}
+
+
 /// WordTranslation records
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct WordTranslation {
