@@ -138,11 +138,10 @@ fn main() -> std::io::Result<()> {
                             orth_lang: lang_id.to_string(),
                             quote: rqp.to_string(),
                             quote_lang: "eng".to_string(),
-                            pos: None,
                             sense: sense_idx as i32,
                             source_id: source.id
                         };
-                        let word_translation_id = tool_helpers::insert_word_translations(&conn, new_entry);
+                        let word_translation_id = tool_helpers::insert_word_translation(&conn, new_entry);
 
                         // insert collected tags
                         for note in collected_tags {

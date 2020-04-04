@@ -38,8 +38,8 @@ pub fn update_source<'a>(conn: &PgConnection, source_id: i32) {
         .expect(&format!("Unable to update source {}", source_id));
 }
 
-/// writes a word_translation entry to the database table, returning the row id
-pub fn insert_word_translations<'a>(conn: &PgConnection, new_entry: NewWordTranslation) -> i32 {
+/// writes a word_translations entry to the database table, returning the row id
+pub fn insert_word_translation<'a>(conn: &PgConnection, new_entry: NewWordTranslation) -> i32 {
     use schema::word_translations;
 
     let inserted: WordTranslation = diesel::insert_into(word_translations::table)

@@ -142,11 +142,15 @@ fn main() -> std::io::Result<()> {
                             orth_lang: orth_lang.to_string(),
                             quote: quote_txt.join("").trim().to_string(),
                             quote_lang: quote_lang.to_string(),
-                            pos: pos_value,
                             sense: sense_idx,
                             source_id: source.id
                         };
-                        tool_helpers::insert_word_translations(&conn, new_entry);
+                        let word_translation_id = tool_helpers::insert_word_translation(&conn, new_entry);
+
+                        // insert part of speech tag if exists
+                        if let Some(pos) = pos_value {
+                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, pos);
+                        }
                         
                         quote_txt.clear();
                     },

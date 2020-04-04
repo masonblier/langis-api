@@ -5,7 +5,6 @@ CREATE TABLE word_translations (
     orth_lang VARCHAR NOT NULL,
     quote VARCHAR NOT NULL,
     quote_lang VARCHAR NOT NULL,
-    pos VARCHAR,
     sense INTEGER NOT NULL DEFAULT 0,
     source_id INTEGER NOT NULL
 );

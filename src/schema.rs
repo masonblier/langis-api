@@ -38,7 +38,6 @@ table! {
         orth_lang -> Varchar,
         quote -> Varchar,
         quote_lang -> Varchar,
-        pos -> Nullable<Varchar>,
         sense -> Int4,
         source_id -> Int4,
     }

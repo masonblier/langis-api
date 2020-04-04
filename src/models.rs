@@ -120,7 +120,6 @@ pub struct WordTranslation {
     pub orth_lang: String,
     pub quote: String,
     pub quote_lang: String,
-    pub pos: Option<String>,
     pub sense: i32,
     pub source_id: i32
 }
@@ -133,7 +132,6 @@ pub struct NewWordTranslation {
     pub orth_lang: String,
     pub quote: String,
     pub quote_lang: String,
-    pub pos: Option<String>,
     pub sense: i32,
     pub source_id: i32
 }
