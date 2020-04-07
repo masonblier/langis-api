@@ -20,6 +20,15 @@ lazy_static::lazy_static! {
     pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
     // matches {comp} tags
     pub static ref COMP_RGX: Regex = Regex::new(r"([^(]*)(\{comp\})(.*)").unwrap();
+    // list of edict grammar part-of-speech notes 
+    pub static ref EDICT_POS: Vec<&'static str> = vec!["adj-f","adj-i","adj-ix","adj-na",
+        "adj-nari","adj-no","adj-pn","adj-t","adv","adv-to","aux","aux-adj","aux-v","conj",
+        "cop","ctr","exp","int","n","n-adv","n-pref","n-suf","n-t","num","pn","pref","prt",
+        "suf","v1","v1-s","v2a-s","v2b-k","v2d-s","v2g-k","v2g-s","v2h-k","v2h-s","v2k-k",
+        "v2k-s","v2m-s","v2n-s","v2r-k","v2r-s","v2s-s","v2t-k","v2t-s","v2w-s","v2y-k",
+        "v2y-s","v2z-s","v4b","v4g","v4h","v4k","v4m","v4r","v4s","v4t","v5aru","v5b","v5g",
+        "v5k","v5k-s","v5m","v5n","v5r","v5r-i","v5s","v5t","v5u","v5u-s","vi","vk","vn","vr",
+        "vs","vs-c","vs-i","vs-s","vt","vz"];
 }
 
 /// main
@@ -145,7 +154,47 @@ fn main() -> std::io::Result<()> {
 
                         // insert collected tags
                         for note in collected_tags {
-                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, note);
+                            // strip ( )
+                            let trimmed_note = note.trim_start_matches('(').trim_end_matches(')').trim();
+
+                            // only for edict, not cedict
+                            let processed_note = if lang_id == "jpn" {
+                                // comp tags are just special notes
+                                if trimmed_note == "{comp}" { 
+                                    "comp".to_string()
+                                // idk what unc stands for, but it refers to special grammar markings
+                                } else if trimmed_note == "unc" { 
+                                    "unc".to_string()
+                                } else {
+
+                                    // split by ,
+                                    let split_note: Vec<&str> = trimmed_note.split(',').collect();
+                                    let split_note_len = (&split_note).len();
+                                    // check if all parts are known edict pos tags
+                                    let pos_notes: Vec<&str> = split_note.into_iter().filter({|n|
+                                        EDICT_POS.contains(n)
+                                    }).collect();
+                                    if pos_notes.len() == 0 {
+                                        //  no pos tags
+                                        trimmed_note.to_string()
+                                    } else if pos_notes.len() == split_note_len {
+                                        // all pos tags, insert each as seperate note
+                                        for pos_note in pos_notes {
+                                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, pos_note.to_string());
+                                        }
+                                        // return empty note
+                                        "".to_string()
+                                    } else {
+                                        // note with mixed pos and non-pos tags is an error case
+                                        panic!("matched split_note with unknown pos tags: {:?}", trimmed_note);
+                                    }
+                                }
+                            } else { trimmed_note.to_string() };
+
+                            // insert note if any note text remains
+                            if processed_note.len() > 0 {
+                                tool_helpers::insert_notes_and_tags(&conn, word_translation_id, processed_note);
+                            }
                         }
                     }
                 }
