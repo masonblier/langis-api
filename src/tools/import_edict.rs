@@ -20,7 +20,7 @@ lazy_static::lazy_static! {
     pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
     // matches {comp} tags
     pub static ref COMP_RGX: Regex = Regex::new(r"([^(]*)(\{comp\})(.*)").unwrap();
-    // list of edict grammar part-of-speech notes 
+    // list of edict grammar part-of-speech tags 
     pub static ref EDICT_POS: Vec<&'static str> = vec!["adj-f","adj-i","adj-ix","adj-na",
         "adj-nari","adj-no","adj-pn","adj-t","adv","adv-to","aux","aux-adj","aux-v","conj",
         "cop","ctr","exp","int","n","n-adv","n-pref","n-suf","n-t","num","pn","pref","prt",
@@ -29,6 +29,8 @@ lazy_static::lazy_static! {
         "v2y-s","v2z-s","v4b","v4g","v4h","v4k","v4m","v4r","v4s","v4t","v5aru","v5b","v5g",
         "v5k","v5k-s","v5m","v5n","v5r","v5r-i","v5s","v5t","v5u","v5u-s","vi","vk","vn","vr",
         "vs","vs-c","vs-i","vs-s","vt","vz"];
+    // list of edict orth tags
+    pub static ref EDICT_ORTH_TAGS: Vec<&'static str> = vec!["P","ik","iK","io","ateji","ok","oK","oik"];
 }
 
 /// main
@@ -106,13 +108,33 @@ fn main() -> std::io::Result<()> {
 
                 // insert rows for each variation
                 for op in orth_parts {
+                    // for edict, parse out extra tags in the orth field
+                    let mut collected_orth_tags = Vec::<String>::new();
+                    let processed_orth = if lang_id == "jpn" {
+                        let orth_tag_parts: Vec<&str> = op.split('(').collect();
+                        for orth_tag_raw in orth_tag_parts[1..].into_iter() {
+                            let orth_tag = orth_tag_raw.trim_end_matches(')');
+                            if EDICT_ORTH_TAGS.contains(&orth_tag) {
+                                collected_orth_tags.push(orth_tag.to_string());
+                            } else {
+                                println!("unknown orth tag: {:?}", orth_tag);
+                            }
+                        }
+
+                        // return first part from split as processed_orth
+                        orth_tag_parts[0]
+                    } else { 
+                        // no processing for cedict
+                        op
+                    };
+
                     for (sense_idx, qp) in quote_parts.clone().into_iter().enumerate() {
-                        // extract pos and See tags from edict2 quote strings
+                        // extract known tags from edict2 quote strings
+                        // TODO extract See tags
                         let mut rqp = qp.clone().to_string();
                         let mut collected_tags = Vec::<String>::new();
                         loop {
-                            // parse out pos tags and See tags
-                            // TODO restrict parsing to only known tags, ignore other stuff between parens
+                            // parse out known pos tags
                             let rqpc = rqp.clone();
                             let tag_match_opt = TAGS_RGX.captures(rqpc.as_str());
                             if let Some(tag_caps) = tag_match_opt {
@@ -143,7 +165,7 @@ fn main() -> std::io::Result<()> {
 
                         // insert word_translations record
                         let new_entry = NewWordTranslation {
-                            orth: op.to_string(),
+                            orth: processed_orth.to_string(),
                             orth_lang: lang_id.to_string(),
                             quote: rqp.to_string(),
                             quote_lang: "eng".to_string(),
@@ -189,12 +211,20 @@ fn main() -> std::io::Result<()> {
                                         panic!("matched split_note with unknown pos tags: {:?}", trimmed_note);
                                     }
                                 }
-                            } else { trimmed_note.to_string() };
+                            } else {
+                                // no processing for cedict
+                                trimmed_note.to_string() 
+                            };
 
                             // insert note if any note text remains
                             if processed_note.len() > 0 {
                                 tool_helpers::insert_notes_and_tags(&conn, word_translation_id, processed_note);
                             }
+                        }
+
+                        // insert collected orth tags
+                        for orth_tag in collected_orth_tags.clone() {
+                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, orth_tag);
                         }
                     }
                 }
