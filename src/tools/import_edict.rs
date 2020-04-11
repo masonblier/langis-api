@@ -18,8 +18,8 @@ lazy_static::lazy_static! {
     pub static ref ENTL_RGX: Regex = Regex::new(r"^EntL(?:\d+)X?$").unwrap();
     // matches pos tags and See tags
     pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
-    // matches {comp} tags
-    pub static ref COMP_RGX: Regex = Regex::new(r"([^(]*)(\{comp\})(.*)").unwrap();
+    // matches {bracket} tags
+    pub static ref BRACKET_TAGS_RGX: Regex = Regex::new(r"([^{]*)(\{[^}]+\})(.*)").unwrap();
     // list of edict grammar part-of-speech tags 
     pub static ref EDICT_POS: Vec<&'static str> = vec!["adj-f","adj-i","adj-ix","adj-na",
         "adj-nari","adj-no","adj-pn","adj-t","adv","adv-to","aux","aux-adj","aux-v","conj",
@@ -31,6 +31,10 @@ lazy_static::lazy_static! {
         "vs","vs-c","vs-i","vs-s","vt","vz"];
     // list of edict orth tags
     pub static ref EDICT_ORTH_TAGS: Vec<&'static str> = vec!["P","ik","iK","io","ateji","ok","oK","oik"];
+    // list of edict bracket tags
+    pub static ref EDICT_BRACKET_TAGS: Vec<&'static str> = vec!["anat","archit","astron","baseb","biol",
+        "bot","Buddh","bus","chem","Christn","comp","econ","engr","finc","food","geol","geom","law",
+        "ling","MA","mahj","math","med","mil","music","physics","Shinto","shogi","sports","sumo","zool"];
 }
 
 /// main
@@ -79,6 +83,7 @@ fn main() -> std::io::Result<()> {
                 // skip the edict2 header line
             } else {                
                 // split the line by '/' to separate orth and quote parts
+                // TODO sometimes / appears within () which messes everything up lol
                 let line_parts: Vec<&str> = ip.split("/").collect();
 
                 // match orth part with optional reading group
@@ -141,7 +146,8 @@ fn main() -> std::io::Result<()> {
                                 rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
                                     " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
                                 if let Some(matched_tag) = tag_caps.get(2) {
-                                    collected_tags.push(matched_tag.as_str().to_string());
+                                    let trimmed_tag = matched_tag.as_str().trim_start_matches('(').trim_end_matches(')');
+                                    collected_tags.push(trimmed_tag.to_string());
                                 }
                             } else {
                                 break;
@@ -149,14 +155,29 @@ fn main() -> std::io::Result<()> {
                         }
 
                         loop {
-                            // parse out {comp} tags
+                            // ignore cedict line that describes curly brackets
+                            if rqp == "curly brackets { }" {
+                                break;
+                            }
+
+                            // parse out known {bracket} tags
                             let rqpc = rqp.clone();
-                            let comp_match_opt = COMP_RGX.captures(rqpc.as_str());
-                            if let Some(comp_caps) = comp_match_opt {
-                                rqp = (comp_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
-                                    " " + comp_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
-                                if let Some(matched_tag) = comp_caps.get(2) {
-                                    collected_tags.push(matched_tag.as_str().to_string());
+                            let tag_match_opt = BRACKET_TAGS_RGX.captures(rqpc.as_str());
+                            if let Some(tag_caps) = tag_match_opt {
+                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
+                                    " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
+                                if let Some(matched_tag) = tag_caps.get(2) {
+                                    // sometimes bracket tags have multiple tags separated by ;
+                                    let split_tags: Vec<&str> = matched_tag.as_str().split(';').collect();
+                                    for split_tag in split_tags {
+                                        let trimmed_tag = split_tag.trim_start_matches('{').trim_end_matches('}');
+                                        if !EDICT_BRACKET_TAGS.contains(&trimmed_tag) {
+                                            println!("unknown bracket tag: {:?}", trimmed_tag);
+                                            println!("  {:?}", rqpc);
+                                            println!();
+                                        }
+                                        collected_tags.push(trimmed_tag.to_string());
+                                    }
                                 }
                             } else {
                                 break;
@@ -176,21 +197,18 @@ fn main() -> std::io::Result<()> {
 
                         // insert collected tags
                         for note in collected_tags {
-                            // strip ( )
-                            let trimmed_note = note.trim_start_matches('(').trim_end_matches(')').trim();
-
                             // only for edict, not cedict
                             let processed_note = if lang_id == "jpn" {
                                 // comp tags are just special notes
-                                if trimmed_note == "{comp}" { 
+                                if note == "{comp}" { 
                                     "comp".to_string()
                                 // idk what unc stands for, but it refers to special grammar markings
-                                } else if trimmed_note == "unc" { 
+                                } else if note == "unc" { 
                                     "unc".to_string()
                                 } else {
 
                                     // split by ,
-                                    let split_note: Vec<&str> = trimmed_note.split(',').collect();
+                                    let split_note: Vec<&str> = note.split(',').collect();
                                     let split_note_len = (&split_note).len();
                                     // check if all parts are known edict pos tags
                                     let pos_notes: Vec<&str> = split_note.into_iter().filter({|n|
@@ -198,7 +216,7 @@ fn main() -> std::io::Result<()> {
                                     }).collect();
                                     if pos_notes.len() == 0 {
                                         //  no pos tags
-                                        trimmed_note.to_string()
+                                        note.to_string()
                                     } else if pos_notes.len() == split_note_len {
                                         // all pos tags, insert each as seperate note
                                         for pos_note in pos_notes {
@@ -208,12 +226,13 @@ fn main() -> std::io::Result<()> {
                                         "".to_string()
                                     } else {
                                         // note with mixed pos and non-pos tags is an error case
-                                        panic!("matched split_note with unknown pos tags: {:?}", trimmed_note);
+                                        println!("note with unknown pos tags: {:?}", note);
+                                        "".to_string()
                                     }
                                 }
                             } else {
                                 // no processing for cedict
-                                trimmed_note.to_string() 
+                                note.to_string() 
                             };
 
                             // insert note if any note text remains
