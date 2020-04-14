@@ -8,6 +8,7 @@ use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::Path;
 
 use langis::database;
+use langis::edict_helpers;
 use langis::models::{NewWordTranslation};
 use langis::tool_helpers;
 
@@ -20,7 +21,7 @@ lazy_static::lazy_static! {
     pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
     // matches {bracket} tags
     pub static ref BRACKET_TAGS_RGX: Regex = Regex::new(r"([^{]*)(\{[^}]+\})(.*)").unwrap();
-    // list of edict grammar part-of-speech tags 
+    // list of edict grammar part-of-speech tags
     pub static ref EDICT_POS: Vec<&'static str> = vec!["adj-f","adj-i","adj-ix","adj-na",
         "adj-nari","adj-no","adj-pn","adj-t","adv","adv-to","aux","aux-adj","aux-v","conj",
         "cop","ctr","exp","int","n","n-adv","n-pref","n-suf","n-t","num","pn","pref","prt",
@@ -76,15 +77,19 @@ fn main() -> std::io::Result<()> {
 
     // Consumes a lazy iterator, reading the file line-by-line
     for line in file_reader.lines() {
-        if let Ok(ip) = line {
-            if ip.starts_with("#") {
+        if let Ok(line_raw) = line {
+            if line_raw.starts_with("#") {
                 // skip lines that begin with #
-            } else if ip.starts_with("　？？？") {
+            } else if line_raw.starts_with("　？？？") {
                 // skip the edict2 header line
-            } else {                
+            } else {
+                // fix bugged parenthesis from a specific line in the edict2 file
+                let line_text = if line_raw.starts_with("倍速 [ばいそく] /(adj-pn) (1) {comp} double-speed (drive, etc.}/") {
+                    line_raw.replace("(drive, etc.}","(drive, etc.)")
+                } else { line_raw };
+
                 // split the line by '/' to separate orth and quote parts
-                // TODO sometimes / appears within () which messes everything up lol
-                let line_parts: Vec<&str> = ip.split("/").collect();
+                let line_parts = edict_helpers::split_by_outer_slashes(&line_text);
 
                 // match orth part with optional reading group
                 let orth_caps = ORTH_RGX.captures(line_parts.first().unwrap()).unwrap();
@@ -97,8 +102,8 @@ fn main() -> std::io::Result<()> {
                 let orth_parts: Vec<&str> = orth.split(orth_splitter).collect();
 
                 // edict2 can have multiple readings split by ;, cedict does not have multiple readings
-                let reading_parts: Vec<&str> = if lang_id == "zho" { 
-                    vec![readings] 
+                let reading_parts: Vec<&str> = if lang_id == "zho" {
+                    vec![readings]
                 } else {
                     readings.split(";").collect()
                 };
@@ -106,10 +111,10 @@ fn main() -> std::io::Result<()> {
                 // split quote parts (definitions) by /
                 let quote_parts_raw = &line_parts[1..];
                 // filter out EntL ids and empty strings
-                let quote_parts: Vec<&str> = quote_parts_raw.iter().filter({|qp|
+                let quote_parts: Vec<String> = quote_parts_raw.iter().filter({|qp|
                     !(qp.is_empty() || ENTL_RGX.is_match(qp))
                 }).map(|qp| qp.clone()).collect();
-                
+
 
                 // insert rows for each variation
                 for op in orth_parts {
@@ -128,7 +133,7 @@ fn main() -> std::io::Result<()> {
 
                         // return first part from split as processed_orth
                         orth_tag_parts[0]
-                    } else { 
+                    } else {
                         // no processing for cedict
                         op
                     };
@@ -143,7 +148,7 @@ fn main() -> std::io::Result<()> {
                             let rqpc = rqp.clone();
                             let tag_match_opt = TAGS_RGX.captures(rqpc.as_str());
                             if let Some(tag_caps) = tag_match_opt {
-                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
+                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() +
                                     " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
                                 if let Some(matched_tag) = tag_caps.get(2) {
                                     let trimmed_tag = matched_tag.as_str().trim_start_matches('(').trim_end_matches(')');
@@ -164,7 +169,7 @@ fn main() -> std::io::Result<()> {
                             let rqpc = rqp.clone();
                             let tag_match_opt = BRACKET_TAGS_RGX.captures(rqpc.as_str());
                             if let Some(tag_caps) = tag_match_opt {
-                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() + 
+                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() +
                                     " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
                                 if let Some(matched_tag) = tag_caps.get(2) {
                                     // sometimes bracket tags have multiple tags separated by ;
@@ -200,10 +205,10 @@ fn main() -> std::io::Result<()> {
                             // only for edict, not cedict
                             let processed_note = if lang_id == "jpn" {
                                 // comp tags are just special notes
-                                if note == "{comp}" { 
+                                if note == "{comp}" {
                                     "comp".to_string()
                                 // idk what unc stands for, but it refers to special grammar markings
-                                } else if note == "unc" { 
+                                } else if note == "unc" {
                                     "unc".to_string()
                                 } else {
 
@@ -232,7 +237,7 @@ fn main() -> std::io::Result<()> {
                                 }
                             } else {
                                 // no processing for cedict
-                                note.to_string() 
+                                note.to_string()
                             };
 
                             // insert note if any note text remains
