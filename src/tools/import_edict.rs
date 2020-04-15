@@ -17,10 +17,8 @@ lazy_static::lazy_static! {
     pub static ref ORTH_RGX: Regex = Regex::new(r"([^\[]+)(?:\[(.+)\])?").unwrap();
     // matches EntL ids from edict2 file
     pub static ref ENTL_RGX: Regex = Regex::new(r"^EntL(?:\d+)X?$").unwrap();
-    // matches pos tags and See tags
-    pub static ref TAGS_RGX: Regex = Regex::new(r"([^(]*)(\([^)]+\))(.*)").unwrap();
     // matches {bracket} tags
-    pub static ref BRACKET_TAGS_RGX: Regex = Regex::new(r"([^{]*)(\{[^}]+\})(.*)").unwrap();
+    pub static ref BRACKET_TAGS_RGX: Regex = Regex::new(r"([^{]*)(\{.+\})(.*)").unwrap();
     // list of edict grammar part-of-speech tags
     pub static ref EDICT_POS: Vec<&'static str> = vec!["adj-f","adj-i","adj-ix","adj-na",
         "adj-nari","adj-no","adj-pn","adj-t","adv","adv-to","aux","aux-adj","aux-v","conj",
@@ -83,9 +81,16 @@ fn main() -> std::io::Result<()> {
             } else if line_raw.starts_with("　？？？") {
                 // skip the edict2 header line
             } else {
-                // fix bugged parenthesis from a specific line in the edict2 file
+                // fix specific lines in the edict2 file
                 let line_text = if line_raw.starts_with("倍速 [ばいそく] /(adj-pn) (1) {comp} double-speed (drive, etc.}/") {
+                    // bugged parenthesis
                     line_raw.replace("(drive, etc.}","(drive, etc.)")
+                } else if line_raw.starts_with("如是 [にょぜ] /(n) (1) {Buddh} (See 如是我聞) (\"like this\"; often the opening word of a sutra)") {
+                    // my parser cant handle quotes with only paren-text
+                    line_raw.replace("(\"like this\"; often","\"like this\" (often")
+                } else if line_raw.starts_with("唐棕櫚;唐棕梠 [とうじゅろ;トウジュロ] /(n) miniature Chusan palm (Trachycarpus wagnerianus)/(poss. Trachycarpus fortunei)") {
+                    // combine these into single quote text
+                    line_raw.replace("(Trachycarpus wagnerianus)/(poss. Trachycarpus fortunei)","(Trachycarpus wagnerianus) (poss. Trachycarpus fortunei)")
                 } else { line_raw };
 
                 // split the line by '/' to separate orth and quote parts
@@ -141,23 +146,22 @@ fn main() -> std::io::Result<()> {
                     for (sense_idx, qp) in quote_parts.clone().into_iter().enumerate() {
                         // extract known tags from edict2 quote strings
                         // TODO extract See tags
-                        let mut rqp = qp.clone().to_string();
                         let mut collected_tags = Vec::<String>::new();
-                        loop {
-                            // parse out known pos tags
-                            let rqpc = rqp.clone();
-                            let tag_match_opt = TAGS_RGX.captures(rqpc.as_str());
-                            if let Some(tag_caps) = tag_match_opt {
-                                rqp = (tag_caps.get(1).map_or("", |m| m.as_str()).trim().to_string() +
-                                    " " + tag_caps.get(3).map_or("", |m| m.as_str()).trim()).trim().to_string();
-                                if let Some(matched_tag) = tag_caps.get(2) {
-                                    let trimmed_tag = matched_tag.as_str().trim_start_matches('(').trim_end_matches(')');
-                                    collected_tags.push(trimmed_tag.to_string());
-                                }
-                            } else {
-                                break;
+                        let (qp_rem, qp_tags) = edict_helpers::extract_outer_paren_groups(&qp);
+                        for qp_tag in qp_tags {
+                            // trim single leading and trailing ( )
+                            let mut trimmed_tag = qp_tag.as_str();
+                            if trimmed_tag.chars().next() == Some('(') {
+                                trimmed_tag = &trimmed_tag[1..];
                             }
+                            if trimmed_tag.chars().last() == Some(')') {
+                                trimmed_tag = &trimmed_tag[..trimmed_tag.len()-1];
+                            }
+                            collected_tags.push(trimmed_tag.to_string());
                         }
+
+                        // remainder str for { } extraction
+                        let mut rqp = qp_rem.clone();
 
                         loop {
                             // ignore cedict line that describes curly brackets
@@ -186,6 +190,29 @@ fn main() -> std::io::Result<()> {
                                 }
                             } else {
                                 break;
+                            }
+                        }
+
+                        // trim whitespace from remainder text
+                        rqp = rqp.trim().to_string();
+
+                        // if we ended up with empty quote text
+                        if rqp == "" {
+                            if collected_tags.len() == 1 && collected_tags[0] == "P" {
+                                // ignore /(P)/ because it seems to be duplicated in the orth
+                                // and i dont know how to handle this case
+                                continue;
+                            } else if collected_tags.len() == 1 && collected_tags[0] == "sometimes called \"negative electricity\"" {
+                                // skip this quote/note because its hard to handle and hopefully not useful
+                                continue;
+                            } else if collected_tags.len() == 1 && collected_tags[0] == "sometimes called \"positive electricity\"" {
+                                // also skip this one (there are actually two)
+                                continue;
+                            } else if collected_tags.len() == 1 && collected_tags[0] == "powerful Turkic confederation from medieval Inner Asia" {
+                                // easiest to just turn this one into quote text
+                                rqp = "powerful Turkic confederation from medieval Inner Asia".to_string();
+                            } else {
+                                println!("unexpected empty quote: {:?} {:?}", rqp, collected_tags);
                             }
                         }
 
