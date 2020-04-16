@@ -9,7 +9,7 @@ use std::path::Path;
 
 use langis::database;
 use langis::edict_helpers;
-use langis::models::{NewWordTranslation};
+use langis::models::{NewWordEntry};
 use langis::tool_helpers;
 
 lazy_static::lazy_static! {
@@ -34,6 +34,11 @@ lazy_static::lazy_static! {
     pub static ref EDICT_BRACKET_TAGS: Vec<&'static str> = vec!["anat","archit","astron","baseb","biol",
         "bot","Buddh","bus","chem","Christn","comp","econ","engr","finc","food","geol","geom","law",
         "ling","MA","mahj","math","med","mil","music","physics","Shinto","shogi","sports","sumo","zool"];
+    // special tags from cedict file
+    pub static ref CEDICT_TAGS: Vec<&'static str> = vec!["anatomy","archaic","behavior","brand","Buddhism","botany",
+        "Cantonese","character","chemistry","coll.","colloquial","computing","dialect","derog.","fig.","finance","geology",
+        "grammar","honorific","idiom","Internet slang","law","literary","linguistics","loanword","math.","meaning unclear",
+        "medicine","military","music","name","old","onom.","physics","polite","proverb","slang","sports","Tw"];
 }
 
 /// main
@@ -159,20 +164,30 @@ fn main() -> std::io::Result<()> {
                     };
 
                     for (sense_idx, qp) in quote_parts.clone().into_iter().enumerate() {
-                        // extract known tags from edict2 quote strings
-                        // TODO extract See tags
+                        // extract known notes from edict2 quote strings
+                        // TODO extract See notes
+                        let mut collected_notes = Vec::<String>::new();
                         let mut collected_tags = Vec::<String>::new();
-                        let (qp_rem, qp_tags) = edict_helpers::extract_outer_paren_groups(&qp);
-                        for qp_tag in qp_tags {
+                        let (qp_rem, qp_notes) = edict_helpers::extract_outer_paren_groups(&qp);
+                        for qp_note in qp_notes {
                             // trim single leading and trailing ( )
-                            let mut trimmed_tag = qp_tag.as_str();
-                            if trimmed_tag.chars().next() == Some('(') {
-                                trimmed_tag = &trimmed_tag[1..];
+                            let mut trimmed_note = qp_note.as_str();
+                            if trimmed_note.chars().next() == Some('(') {
+                                trimmed_note = &trimmed_note[1..];
                             }
-                            if trimmed_tag.chars().last() == Some(')') {
-                                trimmed_tag = &trimmed_tag[..trimmed_tag.len()-1];
+                            if trimmed_note.chars().last() == Some(')') {
+                                trimmed_note = &trimmed_note[..trimmed_note.len()-1];
                             }
-                            collected_tags.push(trimmed_tag.to_string());
+                            // check if note is known tag
+                            if (lang_id == "zho" && CEDICT_TAGS.contains(&trimmed_note)) ||
+                               EDICT_POS.contains(&trimmed_note)
+                            {
+                                // known tag
+                                collected_tags.push(trimmed_note.to_string());
+                            } else {
+                                // not known tag, store as note instead
+                                collected_notes.push(trimmed_note.to_string());
+                            }
                         }
 
                         // remainder str for { } extraction
@@ -195,12 +210,13 @@ fn main() -> std::io::Result<()> {
                                     let split_tags: Vec<&str> = matched_tag.as_str().split(';').collect();
                                     for split_tag in split_tags {
                                         let trimmed_tag = split_tag.trim_start_matches('{').trim_end_matches('}');
-                                        if !EDICT_BRACKET_TAGS.contains(&trimmed_tag) {
-                                            println!("unknown bracket tag: {:?}", trimmed_tag);
+                                        if EDICT_BRACKET_TAGS.contains(&trimmed_tag) {
+                                            collected_tags.push(trimmed_tag.to_string());
+                                        } else {
+                                            println!("WARNING! unknown bracket tag: {:?}", trimmed_tag);
                                             println!("  {:?}", rqpc);
                                             println!();
                                         }
-                                        collected_tags.push(trimmed_tag.to_string());
                                     }
                                 }
                             } else {
@@ -213,26 +229,40 @@ fn main() -> std::io::Result<()> {
 
                         // if we ended up with empty quote text
                         if rqp == "" {
-                            if collected_tags.len() == 1 && collected_tags[0] == "P" {
+                            if collected_notes.len() == 1 && collected_notes[0] == "P" {
                                 // ignore /(P)/ because it seems to be duplicated in the orth
                                 // and i dont know how to handle this case
                                 continue;
-                            } else if collected_tags.len() == 1 && collected_tags[0] == "sometimes called \"negative electricity\"" {
+                            } else if collected_notes.len() == 1 && collected_notes[0] == "sometimes called \"negative electricity\"" {
                                 // skip this quote/note because its hard to handle and hopefully not useful
                                 continue;
-                            } else if collected_tags.len() == 1 && collected_tags[0] == "sometimes called \"positive electricity\"" {
+                            } else if collected_notes.len() == 1 && collected_notes[0] == "sometimes called \"positive electricity\"" {
                                 // also skip this one (there are actually two)
                                 continue;
-                            } else if collected_tags.len() == 1 && collected_tags[0] == "powerful Turkic confederation from medieval Inner Asia" {
+                            } else if collected_notes.len() == 1 && collected_notes[0] == "powerful Turkic confederation from medieval Inner Asia" {
                                 // easiest to just turn this one into quote text
                                 rqp = "powerful Turkic confederation from medieval Inner Asia".to_string();
                             } else {
-                                println!("unexpected empty quote: {:?} {:?}", rqp, collected_tags);
+                                // cedict has several entries with note text but no quote text
+                                // edict should have none, so print warnings
+                                if lang_id == "jpn" {
+                                    println!("WARNING! unexpected empty quote: {:?}, notes: {:?}, tags: {:?}", rqp, collected_notes, collected_tags);
+                                    println!("  {:?}", line_text);
+                                    println!();
+                                }
                             }
                         }
 
-                        // insert word_translations record
-                        let new_entry = NewWordTranslation {
+                        // show warning if nothing useful was parsed
+                        if rqp == "" && collected_notes.len() == 0 && collected_tags.len() == 0 {
+                            println!("WARNING! unexpected empty; quote: {:?}, notes: {:?}, tags: {:?}", rqp, collected_notes, collected_tags);
+                            println!("  {:?}", line_text);
+                            println!();
+                        }
+
+
+                        // insert word_entries record
+                        let new_entry = NewWordEntry {
                             orth: processed_orth.to_string(),
                             orth_lang: lang_id.to_string(),
                             quote: rqp.to_string(),
@@ -240,12 +270,12 @@ fn main() -> std::io::Result<()> {
                             sense: sense_idx as i32,
                             source_id: source.id
                         };
-                        let word_translation_id = tool_helpers::insert_word_translation(&conn, new_entry);
+                        let word_entry_id = tool_helpers::insert_word_entry(&conn, new_entry);
 
-                        // insert collected tags
-                        for note in collected_tags {
+                        // process notes for additional tags
+                        let processed_notes = collected_notes.into_iter().map({|note|
                             // only for edict, not cedict
-                            let processed_note = if lang_id == "jpn" {
+                            if lang_id == "jpn" {
                                 // comp tags are just special notes
                                 if note == "{comp}" {
                                     "comp".to_string()
@@ -253,7 +283,6 @@ fn main() -> std::io::Result<()> {
                                 } else if note == "unc" {
                                     "unc".to_string()
                                 } else {
-
                                     // split by ,
                                     let split_note: Vec<&str> = note.split(',').collect();
                                     let split_note_len = (&split_note).len();
@@ -265,9 +294,9 @@ fn main() -> std::io::Result<()> {
                                         //  no pos tags
                                         note.to_string()
                                     } else if pos_notes.len() == split_note_len {
-                                        // all pos tags, insert each as seperate note
+                                        // all pos tags, store each as seperate tag
                                         for pos_note in pos_notes {
-                                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, pos_note.to_string());
+                                            collected_tags.push(pos_note.to_string());
                                         }
                                         // return empty note
                                         "".to_string()
@@ -280,17 +309,22 @@ fn main() -> std::io::Result<()> {
                             } else {
                                 // no processing for cedict
                                 note.to_string()
-                            };
-
-                            // insert note if any note text remains
-                            if processed_note.len() > 0 {
-                                tool_helpers::insert_notes_and_tags(&conn, word_translation_id, processed_note);
                             }
+                        }).filter({|pn| !pn.is_empty()});
+
+                        // insert notes
+                        for note in processed_notes {
+                            tool_helpers::insert_word_entry_note(&conn, word_entry_id, note);
                         }
 
-                        // insert collected orth tags
+                        // insert orth tags
                         for orth_tag in collected_orth_tags.clone() {
-                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, orth_tag);
+                            tool_helpers::insert_word_entry_tag(&conn, word_entry_id, orth_tag);
+                        }
+
+                        // insert other tags
+                        for tag in collected_tags.clone() {
+                            tool_helpers::insert_word_entry_tag(&conn, word_entry_id, tag);
                         }
                     }
                 }

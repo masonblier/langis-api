@@ -9,7 +9,7 @@ use quick_xml::events::Event;
 use regex::Regex;
 
 use langis::database;
-use langis::models::{NewWordTranslation};
+use langis::models::{NewWordEntry};
 use langis::tool_helpers;
 
 /// enum for tracking the state of which buffer to read body text into
@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
 
     // connect to database
     let conn = database::establish_connection();
-    
+
     // initialize file reader
     let file = File::open(filename)?;
     let file_reader = BufReader::new(file);
@@ -132,12 +132,12 @@ fn main() -> std::io::Result<()> {
                     b"quote" => {
                         // check if pos data was read
                         let pos_str = pos_txt.join("");
-                        let pos_value = if pos_str.len() > 0 { 
-                            Some(pos_str.trim().to_string()) 
+                        let pos_value = if pos_str.len() > 0 {
+                            Some(pos_str.trim().to_string())
                         } else { None };
 
                         // for each quote tag ended, store an entry in the dict_entries table
-                        let new_entry = NewWordTranslation {
+                        let new_entry = NewWordEntry {
                             orth: orth_txt.join("").trim().to_string(),
                             orth_lang: orth_lang.to_string(),
                             quote: quote_txt.join("").trim().to_string(),
@@ -145,17 +145,18 @@ fn main() -> std::io::Result<()> {
                             sense: sense_idx,
                             source_id: source.id
                         };
-                        let word_translation_id = tool_helpers::insert_word_translation(&conn, new_entry);
+                        let word_entry_id = tool_helpers::insert_word_entry(&conn, new_entry);
 
-                        // insert part of speech tag if exists
+                        // insert part of speech tag as note, if exists
+                        // TODO parse normalized pos values from freedict pos tags
                         if let Some(pos) = pos_value {
-                            tool_helpers::insert_notes_and_tags(&conn, word_translation_id, pos);
+                            tool_helpers::insert_word_entry_note(&conn, word_entry_id, format!("pos: {}",pos));
                         }
-                        
+
                         quote_txt.clear();
                     },
                     // if orth or pos tag end, reset txt_which
-                    b"orth" => txt_which = WhichTextBuf::None, 
+                    b"orth" => txt_which = WhichTextBuf::None,
                     b"pos" => txt_which = WhichTextBuf::None,
                     // ignore other tag close events
                     _ => (),
@@ -174,7 +175,7 @@ fn main() -> std::io::Result<()> {
             Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
             _ => (), // There are several other `Event`s we do not consider here
         }
-    
+
         // if we don't keep a borrow elsewhere, we can clear the buffer to keep memory usage low
         buf.clear();
     }

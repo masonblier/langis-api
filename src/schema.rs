@@ -1,12 +1,4 @@
 table! {
-    notes_and_tags (id) {
-        id -> Int4,
-        word_translation_id -> Int4,
-        note -> Varchar,
-    }
-}
-
-table! {
     sessions (token) {
         token -> Varchar,
         user_id -> Int4,
@@ -32,7 +24,7 @@ table! {
 }
 
 table! {
-    word_translations (id) {
+    word_entries (id) {
         id -> Int4,
         orth -> Varchar,
         orth_lang -> Varchar,
@@ -43,10 +35,27 @@ table! {
     }
 }
 
+table! {
+    word_entry_notes (id) {
+        id -> Int4,
+        word_entry_id -> Int4,
+        note -> Varchar,
+    }
+}
+
+table! {
+    word_entry_tags (id) {
+        id -> Int4,
+        word_entry_id -> Int4,
+        tag -> Varchar,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
-    notes_and_tags,
     sessions,
     sources,
     users,
-    word_translations,
+    word_entries,
+    word_entry_notes,
+    word_entry_tags,
 );

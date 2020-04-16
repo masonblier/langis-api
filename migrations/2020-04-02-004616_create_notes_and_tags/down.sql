@@ -1,2 +1,3 @@
 -- This file should undo anything in `up.sql`
-DROP TABLE IF EXISTS notes_and_tags;
+DROP TABLE IF EXISTS word_entry_tags;
+DROP TABLE IF EXISTS word_entry_notes;

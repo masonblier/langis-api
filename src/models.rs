@@ -47,7 +47,7 @@ impl NewUser {
 }
 
 
-/// Session records 
+/// Session records
 #[derive(Debug, Serialize, Deserialize, Queryable, Insertable)]
 #[table_name = "sessions"]
 pub struct Session {
@@ -95,26 +95,42 @@ impl NewSource {
 }
 
 
-/// NotesAndTags records
+/// WordEntryNote records
 #[derive(Debug, Serialize, Deserialize, Queryable)]
-pub struct NotesAndTags {
+pub struct WordEntryNote {
     pub id: i32,
-    pub word_translation_id: i32,
+    pub word_entry_id: i32,
     pub note: String,
 }
 
-/// NewNotesAndTags struct for inserting a new notes_and_tags record
+/// NewWordEntryNote struct for inserting a new word_entry_notes record
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[table_name = "notes_and_tags"]
-pub struct NewNotesAndTags {
-    pub word_translation_id: i32,
+#[table_name = "word_entry_notes"]
+pub struct NewWordEntryNote {
+    pub word_entry_id: i32,
     pub note: String,
 }
 
-
-/// WordTranslation records
+/// WordEntryTag records
 #[derive(Debug, Serialize, Deserialize, Queryable)]
-pub struct WordTranslation {
+pub struct WordEntryTag {
+    pub id: i32,
+    pub word_entry_id: i32,
+    pub tag: String,
+}
+
+/// NewWordEntryTag struct for inserting a new word_entry_tags record
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[table_name = "word_entry_tags"]
+pub struct NewWordEntryTag {
+    pub word_entry_id: i32,
+    pub tag: String,
+}
+
+
+/// WordEntry records
+#[derive(Debug, Serialize, Deserialize, Queryable)]
+pub struct WordEntry {
     pub id: i32,
     pub orth: String,
     pub orth_lang: String,
@@ -124,10 +140,10 @@ pub struct WordTranslation {
     pub source_id: i32
 }
 
-/// NewWordTranslation struct for inserting a new word_translations record
+/// NewWordEntry struct for inserting a new word_entries record
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[table_name = "word_translations"]
-pub struct NewWordTranslation {
+#[table_name = "word_entries"]
+pub struct NewWordEntry {
     pub orth: String,
     pub orth_lang: String,
     pub quote: String,
