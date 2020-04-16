@@ -81,7 +81,7 @@ fn main() -> std::io::Result<()> {
             } else if line_raw.starts_with("　？？？") {
                 // skip the edict2 header line
             } else {
-                // fix specific lines in the edict2 file
+                // fix specific lines in the edict2 and cedict files
                 let line_text = if line_raw.starts_with("倍速 [ばいそく] /(adj-pn) (1) {comp} double-speed (drive, etc.}/") {
                     // bugged parenthesis
                     line_raw.replace("(drive, etc.}","(drive, etc.)")
@@ -91,6 +91,21 @@ fn main() -> std::io::Result<()> {
                 } else if line_raw.starts_with("唐棕櫚;唐棕梠 [とうじゅろ;トウジュロ] /(n) miniature Chusan palm (Trachycarpus wagnerianus)/(poss. Trachycarpus fortunei)") {
                     // combine these into single quote text
                     line_raw.replace("(Trachycarpus wagnerianus)/(poss. Trachycarpus fortunei)","(Trachycarpus wagnerianus) (poss. Trachycarpus fortunei)")
+                } else if line_raw.starts_with("大牌檔 大牌档 [da4 pai2 dang4] /food stall/open-air restaurant (originally Hong Kong usage, now usually written as 大排檔|大排档[da4 pai2 dang4]") {
+                    // unbalanced parentheses
+                    line_raw.replace("大排檔|大排档[da4 pai2 dang4]","大排檔|大排档[da4 pai2 dang4])")
+                } else if line_raw.starts_with("掖庭 掖庭 [ye4 ting2] /Lateral Courts in the imperial palace (housing concubines and administrative offices") {
+                    // unbalanced parentheses
+                    line_raw.replace("administrative offices","administrative offices)")
+                } else if line_raw.starts_with("歹勢 歹势 [dai3 shi4] /(Tw) excuse me/to be sorry/(Taiwanese, Tai-lo pr. [pháinn-sè]") {
+                    // unbalanced parentheses
+                    line_raw.replace("Tai-lo pr. [pháinn-sè]","Tai-lo pr. [pháinn-sè])")
+                } else if line_raw.starts_with("知人者智，自知者明 知人者智，自知者明 [zhi1 ren2 zhe3 zhi4 , zi4 zhi1 zhe3 ming2] /those who understand others are clever, but those who know themselves are truly wise (idiom, from Laozi's 道德經|道德经[Dao4 de2 jing1]") {
+                    // unbalanced parentheses, also split the notes
+                    line_raw.replace("(idiom, from Laozi's 道德經|道德经[Dao4 de2 jing1]","(idiom) (from Laozi's 道德經|道德经[Dao4 de2 jing1])")
+                } else if line_raw.starts_with("能願動詞 能愿动词 [neng2 yuan4 dong4 ci2] /modal verb (e.g. 肯[ken3], 能[neng2], 會|会[hui4], 要[yao4], 該|该[gai1], 得[dei3], 願意|愿意[yuan4 yi4], 可以[ke3 yi3], 可能[ke3 neng2], 敢[gan3], 應該|应该[ying1 gai1]") {
+                    // unbalanced parentheses
+                    line_raw.replace("應該|应该[ying1 gai1]/","應該|应该[ying1 gai1])")
                 } else { line_raw };
 
                 // split the line by '/' to separate orth and quote parts
@@ -165,7 +180,7 @@ fn main() -> std::io::Result<()> {
 
                         loop {
                             // ignore cedict line that describes curly brackets
-                            if rqp == "curly brackets { }" {
+                            if rqp.starts_with("curly brackets { }") {
                                 break;
                             }
 
