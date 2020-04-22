@@ -1,0 +1,1 @@
+pub mod word_entries_controller;

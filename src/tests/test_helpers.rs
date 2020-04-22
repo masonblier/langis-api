@@ -9,10 +9,7 @@ pub mod tests {
     use diesel::sql_types::Text;
     use diesel_migrations::run_pending_migrations;
 
-    use crate::app::controllers::auth_controller::AuthRequestData;
     use crate::app::database::{get_database_pool, DbPool};
-    use crate::app::identity::get_identity_service;
-    use crate::app::security::hash_password;
     use crate::app::routes::build_routes;
 
     // alias for test app type
@@ -54,6 +51,15 @@ pub mod tests {
             // print separating newline
             writeln!(&mut stdout(), "").expect("Failed to print to stdout");
 
+            // insert test fixtures
+            let test_source_id = 0;
+            diesel::sql_query(format!("INSERT INTO word_entries \
+                (orth,orth_lang,quote,quote_lang,sense,source_id) \
+                VALUES ('test_orth','test','test quote','test',0,{}) \
+            ", test_source_id))
+                .execute(conn).expect("Error when inserting test word_entry");
+
+            // result
             TestDbSetup { pool }
         }
     }
@@ -68,8 +74,6 @@ pub mod tests {
             App::new()
                 // set up DB pool to be used with web::Data<Pool> extractor
                 .data(TEST_DB_POOL.pool.clone())
-                // identity
-                .wrap(get_identity_service())
                 // json request parsing config
                 .data(web::JsonConfig::default().limit(4096))
                 .configure(build_routes)

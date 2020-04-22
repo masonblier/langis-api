@@ -9,7 +9,7 @@ use quick_xml::events::Event;
 use regex::Regex;
 
 use langis::database;
-use langis::models::{NewWordEntry};
+use langis::app::models::{NewWordEntry};
 use langis::tool_helpers;
 
 /// enum for tracking the state of which buffer to read body text into

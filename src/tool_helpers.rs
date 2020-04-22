@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 
-use crate::models::{NewSource, NewWordEntry, NewWordEntryNote, NewWordEntryTag, Source, WordEntry};
+use crate::app::models::{NewWordEntry, WordEntry};
+use crate::models::{NewSource, NewWordEntryNote, NewWordEntryTag, Source};
 use crate::schema;
 
 /// finds or creates a sources record citing the dictionary import file

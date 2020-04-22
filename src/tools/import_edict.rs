@@ -9,7 +9,7 @@ use std::path::Path;
 
 use langis::database;
 use langis::edict_helpers;
-use langis::models::{NewWordEntry};
+use langis::app::models::{NewWordEntry};
 use langis::tool_helpers;
 
 lazy_static::lazy_static! {
