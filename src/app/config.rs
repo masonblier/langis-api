@@ -1,7 +1,7 @@
 lazy_static::lazy_static! {
-    // server bind address, default to `127.0.0.1:8080`
+    // server bind address, default to `127.0.0.1:8301`
     pub static ref BIND_ADDRESS: String = std::env::var("BIND_ADDRESS")
-        .unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+        .unwrap_or_else(|_| "127.0.0.1:8301".to_string());
 
     // app domain, default to `localhost`
     pub static ref APP_DOMAIN: String = std::env::var("DOMAIN")
