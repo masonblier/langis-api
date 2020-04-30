@@ -111,6 +111,22 @@ pub struct NewWordEntryNote {
     pub note: String,
 }
 
+/// WordEntryReading records
+#[derive(Debug, Serialize, Deserialize, Queryable)]
+pub struct WordEntryReading {
+    pub id: i32,
+    pub word_entry_id: i32,
+    pub reading: String,
+}
+
+/// NewWordEntryReading struct for inserting a new word_entry_readings record
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[table_name = "word_entry_readings"]
+pub struct NewWordEntryReading {
+    pub word_entry_id: i32,
+    pub reading: String,
+}
+
 /// WordEntryTag records
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct WordEntryTag {

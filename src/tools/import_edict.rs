@@ -1,11 +1,12 @@
 extern crate diesel;
 extern crate regex;
 
-use regex::Regex;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::Path;
+use regex::Regex;
 
 use langis::database;
 use langis::edict_helpers;
@@ -132,6 +133,41 @@ fn main() -> std::io::Result<()> {
                 } else {
                     readings.split(";").collect()
                 };
+                // collect readings with and without specifiers
+                let mut shared_readings: Vec<&str> = Vec::new();
+                let mut specified_readings: HashMap<&str,Vec<&str>> = HashMap::new();
+                for reading in reading_parts.clone() {
+                    // skip unknown readings marked with xx
+                    if !reading.contains("xx") {
+                        if reading.contains('(') {
+                            // specific reading
+                            let sp_parts: Vec<&str> = reading.split('(').collect();
+                            for sp_key_raw in sp_parts[1..].into_iter() {
+                                let sp_key = sp_key_raw.trim_end_matches(')');
+                                // split specified parts by ,
+                                let sp_key_parts: Vec<&str> = sp_key.split(',').collect();
+                                for spp_key in sp_key_parts {
+                                    // skip special key parts for now
+                                    if !(spp_key == "ok" || spp_key == "P" || spp_key == "ik" || spp_key == "gikun") {
+                                        let reading = sp_parts[0].clone().trim();
+                                        if reading != "" {
+                                            if !specified_readings.contains_key(spp_key) {
+                                                specified_readings.insert(spp_key, Vec::new());
+                                            }
+                                            specified_readings.get_mut(spp_key).unwrap().push(reading);
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // shared reading
+                            let reading_trimmed = reading.trim();
+                            if reading_trimmed != "" {
+                                shared_readings.push(reading_trimmed);
+                            }
+                        }
+                    }
+                }
 
                 // split quote parts (definitions) by /
                 let quote_parts_raw = &line_parts[1..];
@@ -325,6 +361,16 @@ fn main() -> std::io::Result<()> {
                         // insert other tags
                         for tag in collected_tags.clone() {
                             tool_helpers::insert_word_entry_tag(&conn, word_entry_id, tag);
+                        }
+
+                        // insert readings
+                        for reading in shared_readings.clone() {
+                            tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.to_string());
+                        }
+                        if specified_readings.contains_key(processed_orth) {
+                            for reading in specified_readings.get(processed_orth).unwrap() {
+                                tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.to_string());
+                            }
                         }
                     }
                 }

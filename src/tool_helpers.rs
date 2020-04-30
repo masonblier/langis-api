@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 
 use crate::app::models::{NewWordEntry, WordEntry};
-use crate::models::{NewSource, NewWordEntryNote, NewWordEntryTag, Source};
+use crate::models::{NewSource, NewWordEntryNote, NewWordEntryReading, NewWordEntryTag, Source};
 use crate::schema;
 
 /// finds or creates a sources record citing the dictionary import file
@@ -61,6 +61,18 @@ pub fn insert_word_entry_note<'a>(conn: &PgConnection, word_entry_id: i32, note:
         .values(&new_record)
         .execute(conn)
         .expect("Error saving word_entry_notes record");
+}
+
+/// writes a word_entry_readings entry to the database table
+pub fn insert_word_entry_reading<'a>(conn: &PgConnection, word_entry_id: i32, reading: String) {
+    use schema::word_entry_readings;
+
+    let new_record = NewWordEntryReading {word_entry_id, reading};
+
+    diesel::insert_into(word_entry_readings::table)
+        .values(&new_record)
+        .execute(conn)
+        .expect("Error saving word_entry_readings record");
 }
 
 /// writes a word_entry_tags entry to the database table

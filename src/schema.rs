@@ -44,6 +44,14 @@ table! {
 }
 
 table! {
+    word_entry_readings (id) {
+        id -> Int4,
+        word_entry_id -> Int4,
+        reading -> Varchar,
+    }
+}
+
+table! {
     word_entry_tags (id) {
         id -> Int4,
         word_entry_id -> Int4,
@@ -57,5 +65,6 @@ allow_tables_to_appear_in_same_query!(
     users,
     word_entries,
     word_entry_notes,
+    word_entry_readings,
     word_entry_tags,
 );
