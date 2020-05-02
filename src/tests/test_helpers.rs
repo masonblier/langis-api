@@ -6,7 +6,7 @@ pub mod tests {
     use actix_web::dev::ServiceResponse;
     use actix_web::{http, test, web, App, body::Body, Error};
     use diesel::prelude::*;
-    use diesel::sql_types::Text;
+    use diesel::sql_types::{Integer,Text};
     use diesel_migrations::run_pending_migrations;
 
     use crate::app::database::{get_database_pool, DbPool};
@@ -53,11 +53,35 @@ pub mod tests {
 
             // insert test fixtures
             let test_source_id = 0;
-            diesel::sql_query(format!("INSERT INTO word_entries \
+            // insert word_entry
+            #[derive(QueryableByName)]
+            struct TestEntryResult(
+                #[column_name = "id"]
+                #[sql_type = "Integer"]
+                i32
+            );
+            let test_entry_result = diesel::sql_query(format!("INSERT INTO word_entries \
                 (orth,orth_lang,quote,quote_lang,sense,source_id) \
                 VALUES ('test_orth','test','test quote','test',0,{}) \
+                RETURNING id \
             ", test_source_id))
-                .execute(conn).expect("Error when inserting test word_entry");
+                .get_result::<TestEntryResult>(conn).expect("Error when inserting test word_entry");
+            let test_entry_id = test_entry_result.0;
+            // insert word_entry_note
+            diesel::sql_query(format!("INSERT INTO word_entry_notes \
+                (word_entry_id,note) \
+                VALUES ({},'test note') \
+            ", test_entry_id)).execute(conn).expect("Error inserting test note");
+            // insert word_entry_reading
+            diesel::sql_query(format!("INSERT INTO word_entry_readings \
+                (word_entry_id,reading) \
+                VALUES ({},'test reading') \
+            ", test_entry_id)).execute(conn).expect("Error inserting test reading");
+            // insert word_entry_tag
+            diesel::sql_query(format!("INSERT INTO word_entry_tags \
+                (word_entry_id,tag) \
+                VALUES ({},'test tag') \
+            ", test_entry_id)).execute(conn).expect("Error inserting test tag");
 
             // result
             TestDbSetup { pool }

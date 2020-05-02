@@ -1,11 +1,9 @@
 #[cfg(test)]
 mod tests {
     use actix_web::{http, test::{call_service, TestRequest}};
-    use diesel::{PgConnection,RunQueryDsl};
 
     use crate::tests::test_helpers::tests::{create_test_app};
     use crate::app::controllers::word_entries_controller::{ListWordEntriesResult};
-    use crate::app::database::{get_database_pool};
 
     #[actix_rt::test]
     async fn test_list_word_entries() {
@@ -34,5 +32,12 @@ mod tests {
         assert!(parsed_json.word_entries[0].id > 0, "Expected result to have valid id");
         assert_eq!(parsed_json.word_entries[0].orth, "test_orth");
         assert_eq!(parsed_json.word_entries[0].quote, "test quote");
+        // expect joined details
+        assert_eq!(parsed_json.word_entry_notes.len(), 1);
+        assert_eq!(parsed_json.word_entry_notes[0].note, "test note");
+        assert_eq!(parsed_json.word_entry_readings.len(), 1);
+        assert_eq!(parsed_json.word_entry_readings[0].reading, "test reading");
+        assert_eq!(parsed_json.word_entry_tags.len(), 1);
+        assert_eq!(parsed_json.word_entry_tags[0].tag, "test tag");
     }
 }
