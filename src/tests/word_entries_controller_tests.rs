@@ -28,16 +28,19 @@ mod tests {
             .expect("Failed to parse ListWordEntriesResult from response");
 
         // expect returned details
-        assert_eq!(parsed_json.word_entries.len(), 1);
-        assert!(parsed_json.word_entries[0].id > 0, "Expected result to have valid id");
-        assert_eq!(parsed_json.word_entries[0].orth, "test_orth");
-        assert_eq!(parsed_json.word_entries[0].quote, "test quote");
+        assert_eq!(parsed_json.page.len(), 1);
+        assert!(parsed_json.page[0].word_entry.id > 0, "Expected result to have valid id");
+        assert_eq!(parsed_json.page[0].word_entry.orth, "test_orth");
+        assert_eq!(parsed_json.page[0].word_entry.quote, "test quote");
         // expect joined details
-        assert_eq!(parsed_json.word_entry_notes.len(), 1);
-        assert_eq!(parsed_json.word_entry_notes[0].note, "test note");
-        assert_eq!(parsed_json.word_entry_readings.len(), 1);
-        assert_eq!(parsed_json.word_entry_readings[0].reading, "test reading");
-        assert_eq!(parsed_json.word_entry_tags.len(), 1);
-        assert_eq!(parsed_json.word_entry_tags[0].tag, "test tag");
+        assert_eq!(parsed_json.page[0].word_entry_notes.len(), 1); // group count
+        assert_eq!(parsed_json.page[0].word_entry_notes.len(), 1); // one per group
+        assert_eq!(parsed_json.page[0].word_entry_notes[0].note, "test note");
+        assert_eq!(parsed_json.page[0].word_entry_readings.len(), 1);
+        assert_eq!(parsed_json.page[0].word_entry_readings.len(), 1);
+        assert_eq!(parsed_json.page[0].word_entry_readings[0].reading, "test reading");
+        assert_eq!(parsed_json.page[0].word_entry_tags.len(), 1);
+        assert_eq!(parsed_json.page[0].word_entry_tags.len(), 1);
+        assert_eq!(parsed_json.page[0].word_entry_tags[0].tag, "test tag");
     }
 }

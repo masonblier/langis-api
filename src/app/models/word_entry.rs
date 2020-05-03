@@ -3,7 +3,7 @@ use serde::{Deserialize,Serialize};
 use crate::schema::word_entries;
 
 // reference item model
-#[derive(Deserialize, Serialize, Identifiable, Queryable, AsChangeset, Associations)]
+#[derive(Debug, Deserialize, Serialize, Identifiable, Queryable, AsChangeset, Associations)]
 #[table_name="word_entries"]
 pub struct WordEntry {
     pub id: i32,
