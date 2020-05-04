@@ -10,6 +10,7 @@ pub struct WordEntryReading {
     pub id: i32,
     pub word_entry_id: i32,
     pub reading: String,
+    pub reading_tag: Option<String>,
 }
 
 /// NewWordEntryReading struct for inserting a new word_entry_readings record
@@ -18,6 +19,7 @@ pub struct WordEntryReading {
 pub struct NewWordEntryReading {
     pub word_entry_id: i32,
     pub reading: String,
+    pub reading_tag: Option<String>,
 }
 
 joinable!(word_entry_readings -> word_entries(word_entry_id));

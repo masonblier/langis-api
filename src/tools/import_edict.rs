@@ -134,8 +134,8 @@ fn main() -> std::io::Result<()> {
                     readings.split(";").collect()
                 };
                 // collect readings with and without specifiers
-                let mut shared_readings: Vec<&str> = Vec::new();
-                let mut specified_readings: HashMap<&str,Vec<&str>> = HashMap::new();
+                let mut shared_readings: Vec<(&str,Option<String>)> = Vec::new();
+                let mut specified_readings: HashMap<&str,Vec<(&str,Option<String>)>> = HashMap::new();
                 for reading in reading_parts.clone() {
                     // skip unknown readings marked with xx
                     if !reading.contains("xx") {
@@ -146,24 +146,39 @@ fn main() -> std::io::Result<()> {
                                 let sp_key = sp_key_raw.trim_end_matches(')');
                                 // split specified parts by ,
                                 let sp_key_parts: Vec<&str> = sp_key.split(',').collect();
-                                for spp_key in sp_key_parts {
-                                    // skip special key parts for now
-                                    if !(spp_key == "ok" || spp_key == "P" || spp_key == "ik" || spp_key == "gikun") {
+                                // filter out special-tag key parts
+                                let mut special_tag = "".to_string();
+                                let spp_key_parts: Vec<&str> = sp_key_parts.into_iter().filter({|&kp|
+                                    if kp == "ok" || kp == "P" || kp == "ik" || kp == "gikun" {
+                                        if special_tag != "" {
+                                            println!("WARNING! multiple special tag key parts: {:?}", &sp_key);
+                                        }
+                                        special_tag = kp.to_string();
+                                        false
+                                    } else { true }
+                                }).collect();
+                                if spp_key_parts.len() > 0 {
+                                    // if specified key parts
+                                    for spp_key in spp_key_parts {
                                         let reading = sp_parts[0].clone().trim();
                                         if reading != "" {
                                             if !specified_readings.contains_key(spp_key) {
                                                 specified_readings.insert(spp_key, Vec::new());
                                             }
-                                            specified_readings.get_mut(spp_key).unwrap().push(reading);
+                                            specified_readings.get_mut(spp_key).unwrap().push((reading,Some(special_tag.clone())));
                                         }
                                     }
+                                } else {
+                                    // no specified key parts, just special-tag key parts, so collect as shared readings
+                                    let reading = sp_parts[0].clone().trim();
+                                    shared_readings.push((reading,Some(special_tag)));
                                 }
                             }
                         } else {
                             // shared reading
                             let reading_trimmed = reading.trim();
                             if reading_trimmed != "" {
-                                shared_readings.push(reading_trimmed);
+                                shared_readings.push((reading_trimmed,None));
                             }
                         }
                     }
@@ -188,7 +203,7 @@ fn main() -> std::io::Result<()> {
                             if EDICT_ORTH_TAGS.contains(&orth_tag) {
                                 collected_orth_tags.push(orth_tag.to_string());
                             } else {
-                                println!("unknown orth tag: {:?}", orth_tag);
+                                println!("WARNING! unknown orth tag: {:?}", orth_tag);
                             }
                         }
 
@@ -338,7 +353,7 @@ fn main() -> std::io::Result<()> {
                                         "".to_string()
                                     } else {
                                         // note with mixed pos and non-pos tags is an error case
-                                        println!("note with unknown pos tags: {:?}", note);
+                                        println!("WARNING! note with unknown pos tags: {:?}", note);
                                         "".to_string()
                                     }
                                 }
@@ -365,11 +380,11 @@ fn main() -> std::io::Result<()> {
 
                         // insert readings
                         for reading in shared_readings.clone() {
-                            tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.to_string());
+                            tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.0.to_string(), reading.1.clone());
                         }
                         if specified_readings.contains_key(processed_orth) {
                             for reading in specified_readings.get(processed_orth).unwrap() {
-                                tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.to_string());
+                                tool_helpers::insert_word_entry_reading(&conn, word_entry_id, reading.0.to_string(), reading.1.clone());
                             }
                         }
                     }

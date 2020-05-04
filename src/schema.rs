@@ -48,6 +48,7 @@ table! {
         id -> Int4,
         word_entry_id -> Int4,
         reading -> Varchar,
+        reading_tag -> Nullable<Varchar>,
     }
 }
 

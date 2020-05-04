@@ -64,10 +64,10 @@ pub fn insert_word_entry_note<'a>(conn: &PgConnection, word_entry_id: i32, note:
 }
 
 /// writes a word_entry_readings entry to the database table
-pub fn insert_word_entry_reading<'a>(conn: &PgConnection, word_entry_id: i32, reading: String) {
+pub fn insert_word_entry_reading<'a>(conn: &PgConnection, word_entry_id: i32, reading: String, reading_tag: Option<String>) {
     use schema::word_entry_readings;
 
-    let new_record = NewWordEntryReading {word_entry_id, reading};
+    let new_record = NewWordEntryReading {word_entry_id, reading, reading_tag};
 
     diesel::insert_into(word_entry_readings::table)
         .values(&new_record)
