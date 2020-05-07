@@ -3,5 +3,8 @@ pub mod config;
 pub mod controllers;
 pub mod errors;
 pub mod database;
+pub mod identity;
+pub mod middleware;
 pub mod models;
 pub mod routes;
+pub mod security;

@@ -9,8 +9,11 @@ pub mod tests {
     use diesel::sql_types::{Integer,Text};
     use diesel_migrations::run_pending_migrations;
 
+    use crate::app::controllers::auth_controller::{AuthRequestData};
     use crate::app::database::{get_database_pool, DbPool};
+    use crate::app::identity::get_identity_service;
     use crate::app::routes::build_routes;
+    use crate::app::security::hash_password;
 
     // alias for test app type
     pub trait TestApp = Service<Request = Request, Response = ServiceResponse<Body>, Error = Error>;
@@ -52,6 +55,11 @@ pub mod tests {
             writeln!(&mut stdout(), "").expect("Failed to print to stdout");
 
             // insert test fixtures
+            // insert user
+            let hashed_test_password = hash_password("test_user").expect("hash_password error");
+            diesel::sql_query(format!("INSERT INTO users (name,passhash,created_at) VALUES ('test_user','{}',now())", hashed_test_password))
+                .execute(conn).expect("Error when inserting test user account");
+
             let test_source_id = 0;
             // insert word_entry
             #[derive(QueryableByName)]
@@ -98,10 +106,37 @@ pub mod tests {
             App::new()
                 // set up DB pool to be used with web::Data<Pool> extractor
                 .data(TEST_DB_POOL.pool.clone())
+                // identity
+                .wrap(get_identity_service())
                 // json request parsing config
                 .data(web::JsonConfig::default().limit(4096))
                 .configure(build_routes)
         )
         .await
+    }
+
+
+    /// Logs-in with test account, returns associated cookie
+    pub async fn login_test_user<A>(mut app: &mut A) -> Cookie<'_>
+        where A: TestApp
+    {
+        // create auth request for test user
+        let auth_data = AuthRequestData {
+            name: "test_user".to_string(),
+            password: "test_user".to_string()
+        };
+
+        // make login request
+        let req = test::TestRequest::post()
+            .set_json(&auth_data)
+            .uri("/auth")
+            .to_request();
+        let resp = test::call_service(&mut app, req).await;
+
+        // expect success
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        // return cookie set by login request
+        resp.response().cookies().next().unwrap().into_owned()
     }
 }

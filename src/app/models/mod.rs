@@ -1,3 +1,7 @@
+pub mod session;
+pub use session::*;
+pub mod user;
+pub use user::*;
 pub mod word_entry;
 pub use word_entry::*;
 pub mod word_entry_note;

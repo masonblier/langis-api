@@ -13,7 +13,7 @@ mod tests;
 
 use crate::app::config;
 use crate::app::database::get_database_pool;
-// use crate::app::identity::get_identity_service;
+use crate::app::identity::get_identity_service;
 use crate::app::routes::build_routes;
 
 /// main
@@ -35,7 +35,7 @@ async fn main() -> std::io::Result<()> {
             // enable logger
             .wrap(middleware::Logger::default())
             // identity
-            // .wrap(get_identity_service())
+            .wrap(get_identity_service())
             // json request parsing config
             .data(web::JsonConfig::default().limit(4096))
             .configure(build_routes)

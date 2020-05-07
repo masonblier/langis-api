@@ -2,7 +2,9 @@ table! {
     sessions (token) {
         token -> Varchar,
         user_id -> Int4,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
+        last_accessed_at -> Timestamptz,
+        accessed_by_client_ip -> Nullable<Text>,
     }
 }
 
@@ -17,9 +19,9 @@ table! {
 table! {
     users (id) {
         id -> Int4,
-        username -> Varchar,
+        name -> Varchar,
         passhash -> Varchar,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
