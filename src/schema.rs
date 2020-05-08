@@ -12,7 +12,7 @@ table! {
     sources (id) {
         id -> Int4,
         name -> Varchar,
-        last_updated_at -> Timestamp,
+        last_updated_at -> Timestamptz,
     }
 }
 

@@ -6,11 +6,13 @@ use std::fs::File;
 use std::io::BufReader;
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use diesel::PgConnection;
+use dotenv;
 use regex::Regex;
 
-use langis::database;
 use langis::app::models::{NewWordEntry};
-use langis::tool_helpers;
+use langis::app::database;
+use langis::helpers::tool_helpers;
 
 /// enum for tracking the state of which buffer to read body text into
 #[derive(Copy, Clone)]
@@ -39,7 +41,9 @@ fn main() -> std::io::Result<()> {
     let quote_lang = lang_re_caps.get(2).unwrap().as_str();
 
     // connect to database
-    let conn = database::establish_connection();
+    dotenv::dotenv().ok();
+    let db = database::get_database_pool();
+    let conn: &PgConnection = &db.get().unwrap();
 
     // initialize file reader
     let file = File::open(filename)?;

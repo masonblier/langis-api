@@ -6,12 +6,13 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::Path;
+use diesel::PgConnection;
+use dotenv;
 use regex::Regex;
 
-use langis::database;
-use langis::edict_helpers;
+use langis::app::database;
 use langis::app::models::{NewWordEntry};
-use langis::tool_helpers;
+use langis::helpers::{edict_helpers,tool_helpers};
 
 lazy_static::lazy_static! {
     // parse language identifier from filename
@@ -63,7 +64,9 @@ fn main() -> std::io::Result<()> {
     };
 
     // connect to database
-    let conn = database::establish_connection();
+    dotenv::dotenv().ok();
+    let db = database::get_database_pool();
+    let conn: &PgConnection = &db.get().unwrap();
 
     // initialize file reader
     let file = File::open(filename)?;
