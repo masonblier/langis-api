@@ -145,18 +145,23 @@ fn main() -> std::io::Result<()> {
                         if reading.contains('(') {
                             // specific reading
                             let sp_parts: Vec<&str> = reading.split('(').collect();
-                            for sp_key_raw in sp_parts[1..].into_iter() {
-                                let sp_key = sp_key_raw.trim_end_matches(')');
+                            // filter out special-tag key parts
+                            let mut special_tags: Vec<String> = Vec::new();
+                            let filtered_sp_parts: Vec<&str> = sp_parts[1..].into_iter().map({|&sp_part|
+                                sp_part.trim_end_matches(')')
+                            }).filter({|&kp|
+                                if kp == "ok" || kp == "P" || kp == "ik" || kp == "gikun" {
+                                    special_tags.push(kp.to_string());
+                                    false
+                                } else { true }
+                            }).collect();
+                            for sp_key in filtered_sp_parts.into_iter() {
                                 // split specified parts by ,
                                 let sp_key_parts: Vec<&str> = sp_key.split(',').collect();
                                 // filter out special-tag key parts
-                                let mut special_tag = "".to_string();
                                 let spp_key_parts: Vec<&str> = sp_key_parts.into_iter().filter({|&kp|
                                     if kp == "ok" || kp == "P" || kp == "ik" || kp == "gikun" {
-                                        if special_tag != "" {
-                                            println!("WARNING! multiple special tag key parts: {:?}", &sp_key);
-                                        }
-                                        special_tag = kp.to_string();
+                                        println!("WARNING! special tag key parts in spp list: {:?}", &sp_key);
                                         false
                                     } else { true }
                                 }).collect();
@@ -168,13 +173,13 @@ fn main() -> std::io::Result<()> {
                                             if !specified_readings.contains_key(spp_key) {
                                                 specified_readings.insert(spp_key, Vec::new());
                                             }
-                                            specified_readings.get_mut(spp_key).unwrap().push((reading,Some(special_tag.clone())));
+                                            specified_readings.get_mut(spp_key).unwrap().push((reading,Some(special_tags.join(","))));
                                         }
                                     }
                                 } else {
                                     // no specified key parts, just special-tag key parts, so collect as shared readings
                                     let reading = sp_parts[0].clone().trim();
-                                    shared_readings.push((reading,Some(special_tag)));
+                                    shared_readings.push((reading,Some(special_tags.join(","))));
                                 }
                             }
                         } else {
