@@ -12,7 +12,7 @@ pub struct WordEntry {
     pub quote: String,
     pub quote_lang: String,
     pub sense: i32,
-    pub source_id: i32,
+    pub group_id: i32,
 }
 
 /// NewWordEntry struct for inserting a new word_entries record
@@ -24,5 +24,5 @@ pub struct NewWordEntry {
     pub quote: String,
     pub quote_lang: String,
     pub sense: i32,
-    pub source_id: i32
+    pub group_id: i32
 }

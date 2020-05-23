@@ -90,6 +90,12 @@ fn main() -> std::io::Result<()> {
             } else if line_raw.starts_with("　？？？") {
                 // skip the edict2 header line
             } else {
+                // insert word_entry_groups record
+                let new_group = NewWordEntryGroup {
+                    source_id: source.id
+                };
+                let group_id = tool_helpers::insert_word_entry_group(&conn, new_group);
+
                 // fix specific lines in the edict2 and cedict files
                 let line_text = if line_raw.starts_with("倍速 [ばいそく] /(adj-pn) (1) {comp} double-speed (drive, etc.}/") {
                     // bugged parenthesis
@@ -327,7 +333,7 @@ fn main() -> std::io::Result<()> {
                             quote: rqp.to_string(),
                             quote_lang: "eng".to_string(),
                             sense: sense_idx as i32,
-                            source_id: source.id
+                            group_id: group_id
                         };
                         let word_entry_id = tool_helpers::insert_word_entry(&conn, new_entry);
 
