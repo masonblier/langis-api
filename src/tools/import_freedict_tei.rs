@@ -10,7 +10,7 @@ use diesel::PgConnection;
 use dotenv;
 use regex::Regex;
 
-use langis::app::models::{NewWordEntry};
+use langis::app::models::{NewWordEntry,NewWordEntryGroup};
 use langis::app::database;
 use langis::helpers::tool_helpers;
 
@@ -76,6 +76,9 @@ fn main() -> std::io::Result<()> {
     // begin
     println!("Beginning import of tei with orth language: {:?}, quote language: {:?}", orth_lang, quote_lang);
 
+    // store next group_id
+    let mut group_id: i32 = 0;
+
     loop {
         match reader.read_event(&mut buf) {
             Ok(Event::Start(ref e)) => {
@@ -87,6 +90,12 @@ fn main() -> std::io::Result<()> {
                         quote_txt.clear();
                         pos_txt.clear();
                         sense_idx = 0;
+
+                        // insert word_entry_groups record
+                        let new_group = NewWordEntryGroup {
+                            source_id: source.id
+                        };
+                        group_id = tool_helpers::insert_word_entry_group(&conn, new_group);
                     },
                     // sense-tag begin
                     b"sense" => {
@@ -147,7 +156,7 @@ fn main() -> std::io::Result<()> {
                             quote: quote_txt.join("").trim().to_string(),
                             quote_lang: quote_lang.to_string(),
                             sense: sense_idx,
-                            source_id: source.id
+                            group_id: group_id
                         };
                         let word_entry_id = tool_helpers::insert_word_entry(&conn, new_entry);
 

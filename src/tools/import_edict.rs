@@ -11,7 +11,7 @@ use dotenv;
 use regex::Regex;
 
 use langis::app::database;
-use langis::app::models::{NewWordEntry};
+use langis::app::models::{NewWordEntry,NewWordEntryGroup};
 use langis::helpers::{edict_helpers,tool_helpers};
 
 lazy_static::lazy_static! {

@@ -6,6 +6,8 @@ pub mod user;
 pub use user::*;
 pub mod word_entry;
 pub use word_entry::*;
+pub mod word_entry_group;
+pub use word_entry_group::*;
 pub mod word_entry_note;
 pub use word_entry_note::*;
 pub mod word_entry_reading;

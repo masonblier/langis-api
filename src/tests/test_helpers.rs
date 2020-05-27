@@ -69,7 +69,7 @@ pub mod tests {
                 i32
             );
             let test_entry_result = diesel::sql_query(format!("INSERT INTO word_entries \
-                (orth,orth_lang,quote,quote_lang,sense,source_id) \
+                (orth,orth_lang,quote,quote_lang,sense,group_id) \
                 VALUES ('test_orth','test','test quote','test',0,{}) \
                 RETURNING id \
             ", test_source_id))

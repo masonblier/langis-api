@@ -33,6 +33,13 @@ table! {
         quote -> Varchar,
         quote_lang -> Varchar,
         sense -> Int4,
+        group_id -> Int4,
+    }
+}
+
+table! {
+    word_entry_groups (id) {
+        id -> Int4,
         source_id -> Int4,
     }
 }
@@ -67,6 +74,7 @@ allow_tables_to_appear_in_same_query!(
     sources,
     users,
     word_entries,
+    word_entry_groups,
     word_entry_notes,
     word_entry_readings,
     word_entry_tags,
